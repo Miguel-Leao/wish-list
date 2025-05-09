@@ -1,29 +1,32 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 let id = 0
 
 const newWish = ref('')
 const hideCompleted = ref(false)
 const wishes = ref([])
-
-onMounted(() => {
-  const saved = localStorage.getItem('wishes')
-  if (saved) {
-    wishes.value = JSON.parse(saved)
-    id = wishes.value.length > 0 ? Math.max(...wishes.value.map(w => w.id)) + 1 : 0
-  }
-})
-
-watch(wishes, (newWishes) => {
-  localStorage.setItem('wishes', JSON.stringify(newWishes))
-}, { deep: true })
+const loading = ref(true)
 
 const filteredWishes = computed(() => {
   return hideCompleted.value
     ? wishes.value.filter((t) => !t.done)
     : wishes.value
 })
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function loadWishes() {
+  await delay(2000)
+  const saved = localStorage.getItem('wishes')
+  if (saved) {
+    wishes.value = JSON.parse(saved)
+    id = wishes.value.length > 0 ? Math.max(...wishes.value.map(w => w.id)) + 1 : 0
+  }
+  loading.value = false
+}
 
 function addWish() {
   wishes.value.push({ id: id++, text: newWish.value, done: false })
@@ -33,9 +36,19 @@ function addWish() {
 function removeWish(wish) {
   wishes.value = wishes.value.filter((t) => t !== wish)
 }
+ 
+watch(wishes, (newWishes) => {
+  localStorage.setItem('wishes', JSON.stringify(newWishes))
+}, { deep: true })
+
+onMounted(() => {
+  loadWishes()
+})
 </script>
 
 <template>
+  <div v-if="loading"> Carregando seus desejos...</div>
+  <div v-else>
   <form @submit.prevent="addWish">
     <input v-model="newWish" required placeholder="New wish" />
     <button>Add Wish</button>
@@ -52,6 +65,7 @@ function removeWish(wish) {
   <button @click="hideCompleted = !hideCompleted">
     {{ hideCompleted ? 'Show All' : 'Hide completed' }}
   </button>
+  </div>
 </template>
 
 <style>
